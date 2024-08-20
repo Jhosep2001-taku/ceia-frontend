@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../axiosConfig';
 import {
     Button,
     Dialog,
     DialogActions,
     DialogContent,
     DialogContentText,
-    DialogTitle
+    DialogTitle,
+    Snackbar
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { API_URL } from '../../config';
 
-const EliminarUnidad = ({ unidadId, onUnidadEliminada }) => {
+const EliminarUnidad = ({ unidadId, onUnidadEliminada, onClose }) => {
     const [open, setOpen] = useState(false);
+    const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
 
     const handleClickOpen = () => {
         setOpen(true);
@@ -19,24 +23,42 @@ const EliminarUnidad = ({ unidadId, onUnidadEliminada }) => {
 
     const handleClose = () => {
         setOpen(false);
+        onClose();
     };
 
-    const handleDelete = () => {
-        axios.delete(`${API_URL}/unidades/${unidadId}`)
-            .then(() => {
-                console.log('Unidad eliminada');
-                onUnidadEliminada(unidadId); // Notificar al padre que una unidad ha sido eliminada
-                setOpen(false);
-            })
-            .catch(error => {
-                console.error('Hubo un error al eliminar la unidad:', error);
-            });
+    const handleDelete = async () => {
+        try {
+            const response = await axiosInstance.delete(`${API_URL}/unidades/${unidadId}`);
+            
+            if (response.status === 200 || response.status === 204) {
+                onUnidadEliminada(unidadId);
+                setSnackbarMessage('Unidad eliminada con éxito');
+            } else {
+                setSnackbarMessage('Error al eliminar la unidad: Respuesta inesperada del servidor');
+            }
+        } catch (error) {
+            console.error('Hubo un error al eliminar la unidad:', error);
+            console.error('Detalles del error:', error.response);
+            setSnackbarMessage(`Error al eliminar la unidad: ${error.message}`);
+        } finally {
+            setOpen(false);
+            setSnackbarOpen(true);
+        }
+    };
+
+    const handleSnackbarClose = () => {
+        setSnackbarOpen(false);
     };
 
     return (
         <div>
-            <Button variant="contained" color="secondary" onClick={handleClickOpen}>
-                Eliminar Unidad
+            <Button
+                variant="outlined"
+                color="secondary"
+                onClick={handleClickOpen}
+                startIcon={<DeleteIcon />}
+            >
+                Eliminar
             </Button>
             <Dialog
                 open={open}
@@ -59,6 +81,12 @@ const EliminarUnidad = ({ unidadId, onUnidadEliminada }) => {
                     </Button>
                 </DialogActions>
             </Dialog>
+            <Snackbar
+                open={snackbarOpen}
+                autoHideDuration={6000}
+                onClose={handleSnackbarClose}
+                message={snackbarMessage}
+            />
         </div>
     );
 };

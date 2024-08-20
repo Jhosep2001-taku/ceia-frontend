@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../../axiosConfig';
 import {
     Button,
     Dialog,
@@ -12,14 +12,22 @@ import {
     Card,
     CardContent,
     CardMedia,
-    CardActions
+    CardActions,
+    IconButton,
+    Modal,
+    Fade,
+    Backdrop
 } from '@mui/material';
-import { API_URL } from '../../config';
+import { API_URL } from '../../../config';
+import DeleteIcon from '@mui/icons-material/Delete';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import CloseIcon from '@mui/icons-material/Close';
 
 const EliminarImagenEquipo = ({ equipoId, imagen, onDelete }) => {
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [fullscreenOpen, setFullscreenOpen] = useState(false);
 
     const handleClickOpen = () => {
         setOpen(true);
@@ -41,7 +49,7 @@ const EliminarImagenEquipo = ({ equipoId, imagen, onDelete }) => {
 
         try {
             // Llama a tu API para eliminar la imagen
-            await axios.delete(`${API_URL}/equipos/${equipoId}/imagenes/${imagen.IdImagen}`);
+            await axiosInstance.delete(`${API_URL}/equipos/${equipoId}/imagenes/${imagen.IdImagen}`);
             onDelete(imagen.IdImagen);
             handleClose();
         } catch (error) {
@@ -53,7 +61,15 @@ const EliminarImagenEquipo = ({ equipoId, imagen, onDelete }) => {
     };
 
     // Construye la URL completa de la imagen en tu backend Laravel
-    const imageUrl = `http://127.0.0.1:8000${imagen.Ruta}`;
+    const imageUrl = `${API_URL.replace('/api', '')}${imagen.Ruta}`;
+
+    const handleFullscreenOpen = () => {
+        setFullscreenOpen(true);
+    };
+
+    const handleFullscreenClose = () => {
+        setFullscreenOpen(false);
+    };
 
     return (
         <Card>
@@ -63,17 +79,19 @@ const EliminarImagenEquipo = ({ equipoId, imagen, onDelete }) => {
                     height="140"
                     image={imageUrl}
                     alt={`Imagen del equipo ${equipoId}`}
+                    sx={{ cursor: 'pointer' }}
+                    onDoubleClick={handleFullscreenOpen}
                 />
             )}
-            <CardContent>
-                {/*
-                <Typography variant="body1" color="textSecondary">
-                    Equipo ID: {equipoId}
-                </Typography>*/}
-            </CardContent>
             <CardActions>
-                <Button variant="contained" color="secondary" onClick={handleClickOpen}>
-                    Eliminar Imagen
+                <Button 
+                    variant="outlined" 
+                    color="secondary" 
+                    onClick={handleDelete} 
+                    startIcon={<DeleteIcon />} 
+                    disabled={isLoading}
+                >
+                {isLoading ? 'Eliminando...' : 'Eliminar'}
                 </Button>
             </CardActions>
 
@@ -104,6 +122,50 @@ const EliminarImagenEquipo = ({ equipoId, imagen, onDelete }) => {
                     </Button>
                 </DialogActions>
             </Dialog>
+        <Modal
+                open={fullscreenOpen}
+                onClose={handleFullscreenClose}
+                closeAfterTransition
+                BackdropComponent={Backdrop}
+                BackdropProps={{
+                    timeout: 500,
+                }}
+            >
+                <Fade in={fullscreenOpen}>
+                    <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '90%',
+                        height: '90%',
+                        backgroundColor: 'black',
+                        boxShadow: 24,
+                        outline: 'none',
+                    }}>
+                        <IconButton
+                            style={{
+                                position: 'absolute',
+                                top: 10,
+                                right: 10,
+                                color: 'white',
+                            }}
+                            onClick={handleFullscreenClose}
+                        >
+                            <CloseIcon />
+                        </IconButton>
+                        <img
+                            src={imageUrl}
+                            alt={`Imagen de la solicitud ${equipoId}`}
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain',
+                            }}
+                        />
+                    </div>
+                </Fade>
+            </Modal>
         </Card>
     );
 };

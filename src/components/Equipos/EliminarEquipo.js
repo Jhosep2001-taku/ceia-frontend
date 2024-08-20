@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../axiosConfig';
 import {
     Button,
     Dialog,
@@ -8,12 +8,13 @@ import {
     DialogContentText,
     DialogTitle
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { API_URL } from '../../config';
 
 const EliminarEquipo = ({ equipoId, onEquipoEliminado }) => {
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState(null); // Estado para manejar errores
+    const [error, setError] = useState(null);
 
     const handleClickOpen = () => {
         setOpen(true);
@@ -26,52 +27,46 @@ const EliminarEquipo = ({ equipoId, onEquipoEliminado }) => {
     const handleDelete = async () => {
         setIsLoading(true);
         try {
-            await axios.delete(`${API_URL}/equipos/${equipoId}`);
-            console.log('Equipo eliminado');
-            onEquipoEliminado(equipoId); // Notificar al padre que un equipo ha sido eliminado
-            setOpen(false); // Cerrar el diálogo de confirmación
-            // Considera actualizar el estado localmente en lugar de recargar la página
+            await axiosInstance.delete(`${API_URL}/equipos/${equipoId}`);
+            onEquipoEliminado(equipoId);
+            handleClose();
         } catch (error) {
-            console.error('Hubo un error al eliminar el equipo:', error.response ? error.response.data : error.message);
-            setError('Error al eliminar el equipo'); // Manejo del estado de error
+            setError('Hubo un error al eliminar el equipo. Por favor, inténtalo de nuevo.');
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div>
-            <Button variant="contained" color="secondary" onClick={handleClickOpen}>
-                Eliminar Equipo
+        <>
+            <Button variant="outlined" color="secondary" onClick={handleClickOpen} startIcon={<DeleteIcon />}>
+                Eliminar
             </Button>
             <Dialog
                 open={open}
                 onClose={handleClose}
-                aria-labelledby="alert-dialog-title"
-                aria-describedby="alert-dialog-description"
             >
-                <DialogTitle id="alert-dialog-title">{"Confirmación"}</DialogTitle>
+                <DialogTitle>Eliminar Equipo</DialogTitle>
                 <DialogContent>
-                    <DialogContentText id="alert-dialog-description">
-                        ¿Está seguro que desea eliminar este equipo?
+                    <DialogContentText>
+                        ¿Estás seguro de que deseas eliminar este equipo? Esta acción no se puede deshacer.
                     </DialogContentText>
+                    {error && (
+                        <DialogContentText color="error">
+                            {error}
+                        </DialogContentText>
+                    )}
                 </DialogContent>
                 <DialogActions>
-                    <Button disabled={isLoading} onClick={handleClose} color="primary">
+                    <Button onClick={handleClose} color="primary">
                         Cancelar
                     </Button>
-                    <Button
-                        disabled={isLoading}
-                        onClick={handleDelete}
-                        color="secondary"
-                        autoFocus
-                    >
+                    <Button onClick={handleDelete} color="secondary" disabled={isLoading}>
                         {isLoading ? 'Eliminando...' : 'Eliminar'}
                     </Button>
                 </DialogActions>
             </Dialog>
-            {error && <p>{error}</p>} {/* Mostrar mensaje de error si ocurre */}
-        </div>
+        </>
     );
 };
 

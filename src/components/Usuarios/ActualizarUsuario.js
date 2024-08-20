@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../axiosConfig';
 import {
     Typography,
     TextField,
@@ -8,9 +8,13 @@ import {
     FormControl,
     InputLabel,
     Switch,
-    FormHelperText
+    FormHelperText,
+    IconButton,
+    InputAdornment
 } from '@mui/material';
 import { API_URL } from '../../config';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 const ActualizarUsuario = ({ usuarioId, onUsuarioActualizado }) => {
     const [usuario, setUsuario] = useState({
@@ -18,16 +22,17 @@ const ActualizarUsuario = ({ usuarioId, onUsuarioActualizado }) => {
         NombreCompleto: '',
         Correo: '',
         Celular: '',
-        Clave: '',
         Rol: '',
         Estado: 1,
         FechaRegistro: ''
     });
+    const [newPassword, setNewPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         const fetchUsuario = async () => {
             try {
-                const response = await axios.get(`${API_URL}/usuarios/${usuarioId}`);
+                const response = await axiosInstance.get(`${API_URL}/usuarios/${usuarioId}`);
                 setUsuario(response.data);
             } catch (error) {
                 console.error('Hubo un error al obtener el usuario:', error);
@@ -46,20 +51,24 @@ const ActualizarUsuario = ({ usuarioId, onUsuarioActualizado }) => {
         setUsuario({ ...usuario, Estado: newState });
     };
 
-    const handleInputLabelShrink = (fieldName) => {
-        return Boolean(usuario[fieldName]);
-    };
-
     const handleSubmit = (e) => {
         e.preventDefault();
-        axios.put(`${API_URL}/usuarios/${usuarioId}`, usuario)
+        const updatedUser = {...usuario};
+        if (newPassword) {
+            updatedUser.Clave = newPassword;
+        }
+        axiosInstance.put(`${API_URL}/usuarios/${usuarioId}`, updatedUser)
             .then(response => {
-                console.log('Usuario actualizado:', response.data);
-                onUsuarioActualizado(response.data); // Notificar al padre que un usuario ha sido actualizado
+                
+                onUsuarioActualizado(response.data);
             })
             .catch(error => {
                 console.error('Hubo un error al actualizar el usuario:', error);
             });
+    };
+
+    const handleClickShowPassword = () => {
+        setShowPassword(!showPassword);
     };
 
     return (
@@ -107,15 +116,23 @@ const ActualizarUsuario = ({ usuarioId, onUsuarioActualizado }) => {
                     margin="normal"
                 />
                 <TextField
-                    label="Clave"
-                    type="password"
-                    name="Clave"
-                    value={usuario.Clave}
-                    onChange={handleInputChange}
-                    required
+                    label="Nueva Contraseña"
+                    type={showPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
                     fullWidth
                     margin="normal"
+                    InputProps={{
+                        endAdornment: (
+                            <InputAdornment position="end">
+                                <IconButton onClick={handleClickShowPassword} edge="end">
+                                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                                </IconButton>
+                            </InputAdornment>
+                        )
+                    }}
                 />
+                <FormHelperText>Deja en blanco para mantener la contraseña actual</FormHelperText>
                 <TextField
                     label="Rol"
                     type="text"

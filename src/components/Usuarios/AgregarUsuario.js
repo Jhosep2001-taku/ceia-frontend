@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../axiosConfig';
 import {
     Button,
     TextField,
@@ -12,6 +12,10 @@ import {
     Switch
 } from '@mui/material';
 import { API_URL } from '../../config';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 const AgregarUsuario = ({ onUsuarioAgregado }) => {
     const initialState = {
@@ -27,6 +31,7 @@ const AgregarUsuario = ({ onUsuarioAgregado }) => {
 
     const [usuario, setUsuario] = useState(initialState);
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     // Estado para manejar el enfoque de los campos
     const [focusedFields, setFocusedFields] = useState({
@@ -52,7 +57,7 @@ const AgregarUsuario = ({ onUsuarioAgregado }) => {
         e.preventDefault();
         setIsLoading(true); // Activar estado de carga
         try {
-            const response = await axios.post(`${API_URL}/usuarios`, usuario);
+            const response = await axiosInstance.post(`${API_URL}/usuarios`, usuario);
             onUsuarioAgregado(response.data); // Notificar al padre que un usuario ha sido agregado
             setUsuario(initialState); // Reiniciar el estado del formulario
         } catch (error) {
@@ -153,20 +158,34 @@ const AgregarUsuario = ({ onUsuarioAgregado }) => {
 
                 <FormControl fullWidth margin="normal">
                     <InputLabel htmlFor="Clave" shrink={handleInputLabelShrink('Clave', usuario.Clave)}>
-                        Clave
+                        Contraseña
                     </InputLabel>
                     <TextField
                         id="Clave"
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
                         name="Clave"
                         value={usuario.Clave}
                         onChange={handleChange}
                         onClick={() => handleFocus('Clave')}
                         onBlur={() => handleBlur('Clave')}
                         required
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        aria-label="toggle password visibility"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        onMouseDown={(e) => e.preventDefault()} // Evita el comportamiento por defecto
+                                    >
+                                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
                     />
                     <FormHelperText>Ingresa la contraseña del usuario</FormHelperText>
                 </FormControl>
+
 
                 <FormControl fullWidth margin="normal">
                     <InputLabel htmlFor="Rol" shrink={handleInputLabelShrink('Rol', usuario.Rol)}>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import axiosInstance from '../../axiosConfig';
 import {
     Button,
     TextField,
@@ -9,7 +9,8 @@ import {
     Box,
     Typography,
     CircularProgress,
-    Switch
+    Switch,
+    Autocomplete
 } from '@mui/material';
 import { API_URL } from '../../config';
 
@@ -17,7 +18,7 @@ const AgregarUnidad = ({ onUnidadAgregada }) => {
     const initialState = {
         TipoUnidad: '',
         NombreUnidad: '',
-        NombreEncargado: '',
+        IdUsuario: '',
         CorreoEncargado: '',
         CelularEncargado: '',
         Estado: 1,
@@ -26,19 +27,44 @@ const AgregarUnidad = ({ onUnidadAgregada }) => {
 
     const [unidad, setUnidad] = useState(initialState);
     const [isLoading, setIsLoading] = useState(false);
+    const [usuarios, setUsuarios] = useState([]);
+    const [loadingUsuarios, setLoadingUsuarios] = useState(false);
     const [focusedFields, setFocusedFields] = useState({
         TipoUnidad: false,
         NombreUnidad: false,
-        NombreEncargado: false,
-        CorreoEncargado: false,
-        CelularEncargado: false,
-        Estado: false,
-        FechaRegistro:false
+        IdUsuario: false,
+        Estado: false
     });
+
+    useEffect(() => {
+        const fetchUsuarios = async () => {
+            setLoadingUsuarios(true);
+            try {
+                const response = await axiosInstance.get(`${API_URL}/usuarios`);
+                setUsuarios(response.data);
+            } catch (error) {
+                console.error('Error al cargar usuarios:', error);
+            } finally {
+                setLoadingUsuarios(false);
+            }
+        };
+        fetchUsuarios();
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setUnidad({ ...unidad, [name]: value });
+
+        if (name === 'IdUsuario') {
+            const selectedUser = usuarios.find(user => user.IdUsuario === parseInt(value));
+            if (selectedUser) {
+                setUnidad(prevState => ({
+                    ...prevState,
+                    CorreoEncargado: selectedUser.Correo,
+                    CelularEncargado: selectedUser.Celular
+                }));
+            }
+        }
     };
 
     const handleSwitchChange = () => {
@@ -47,19 +73,18 @@ const AgregarUnidad = ({ onUnidadAgregada }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsLoading(true); // Activar estado de carga
+        setIsLoading(true);
 
         try {
-            const response = await axios.post(`${API_URL}/unidades`, unidad);
-            onUnidadAgregada(response.data); // Notificar al padre que una unidad ha sido agregada
-            setUnidad(initialState); // Reiniciar el estado del formulario
+            const response = await axiosInstance.post(`${API_URL}/unidades`, unidad);
+            onUnidadAgregada(response.data);
+            setUnidad(initialState);
         } catch (error) {
             console.error('Hubo un error al agregar la unidad:', error.response ? error.response.data : error.message);
         } finally {
-            setIsLoading(false); // Desactivar estado de carga
+            setIsLoading(false);
         }
     };
-    
 
     const handleInputLabelShrink = (name, value) => {
         return focusedFields[name] || value !== '';
@@ -84,7 +109,7 @@ const AgregarUnidad = ({ onUnidadAgregada }) => {
                         name="TipoUnidad"
                         value={unidad.TipoUnidad}
                         onChange={handleChange}
-                        onClick={() => handleFocus('TipoUnidad')}
+                        onFocus={() => handleFocus('TipoUnidad')}
                         onBlur={() => handleBlur('TipoUnidad')}
                         required
                     />
@@ -92,13 +117,13 @@ const AgregarUnidad = ({ onUnidadAgregada }) => {
                 </FormControl>
 
                 <FormControl fullWidth margin="normal">
-                    <InputLabel htmlFor="NombreUnidad" shrink={handleInputLabelShrink('NombreUnidad', unidad.NombreUnidad)} >Nombre de Unidad</InputLabel>
+                    <InputLabel htmlFor="NombreUnidad" shrink={handleInputLabelShrink('NombreUnidad', unidad.NombreUnidad)}>Nombre de Unidad</InputLabel>
                     <TextField
                         id="NombreUnidad"
                         name="NombreUnidad"
                         value={unidad.NombreUnidad}
                         onChange={handleChange}
-                        onClick={() => handleFocus('NombreUnidad')}
+                        onFocus={() => handleFocus('NombreUnidad')}
                         onBlur={() => handleBlur('NombreUnidad')}
                         required
                     />
@@ -106,42 +131,47 @@ const AgregarUnidad = ({ onUnidadAgregada }) => {
                 </FormControl>
 
                 <FormControl fullWidth margin="normal">
-                    <InputLabel htmlFor="NombreEncargado" shrink={handleInputLabelShrink('NombreEncargado', unidad.NombreEncargado)}>Nombre Encargado</InputLabel>
-                    <TextField
-                        id="NombreEncargado"
-                        name="NombreEncargado"
-                        value={unidad.NombreEncargado}
-                        onClick={() => handleFocus('NombreEncargado')}
-                        onBlur={() => handleBlur('NombreEncargado')}
-                        onChange={handleChange}
+                    <Autocomplete
+                        id="IdUsuario"
+                        options={usuarios}
+                        getOptionLabel={(option) => option.NombreCompleto || ''}
+                        value={usuarios.find(user => user.IdUsuario === parseInt(unidad.IdUsuario)) || null}
+                        onChange={(event, newValue) => {
+                            if (newValue) {
+                                setUnidad(prevState => ({
+                                    ...prevState,
+                                    IdUsuario: newValue.IdUsuario,
+                                    CorreoEncargado: newValue.Correo,
+                                    CelularEncargado: newValue.Celular
+                                }));
+                            } else {
+                                setUnidad(prevState => ({
+                                    ...prevState,
+                                    IdUsuario: '',
+                                    CorreoEncargado: '',
+                                    CelularEncargado: ''
+                                }));
+                            }
+                        }}
+                        loading={loadingUsuarios}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Encargado"
+                                variant="outlined"
+                                InputProps={{
+                                    ...params.InputProps,
+                                    endAdornment: (
+                                        <>
+                                            {loadingUsuarios ? <CircularProgress color="inherit" size={24} /> : null}
+                                            {params.InputProps.endAdornment}
+                                        </>
+                                    ),
+                                }}
+                            />
+                        )}
                     />
-                    <FormHelperText>Ingrese el nombre del encargado de la unidad</FormHelperText>
-                </FormControl>
-
-                <FormControl fullWidth margin="normal">
-                    <InputLabel htmlFor="CorreoEncargado" shrink={handleInputLabelShrink('CorreoEncargado', unidad.CorreoEncargado)}>Correo Encargado</InputLabel>
-                    <TextField
-                        id="CorreoEncargado"
-                        name="CorreoEncargado"
-                        value={unidad.CorreoEncargado}
-                        onClick={() => handleFocus('CorreoEncargado')}
-                        onBlur={() => handleBlur('CorreoEncargado')}
-                        onChange={handleChange}
-                    />
-                    <FormHelperText>Ingrese el correo del encargado de la unidad</FormHelperText>
-                </FormControl>
-
-                <FormControl fullWidth margin="normal">
-                    <InputLabel htmlFor="CelularEncargado" shrink={handleInputLabelShrink('CelularEncargado', unidad.CelularEncargado)}>Celular Encargado</InputLabel>
-                    <TextField
-                        id="CelularEncargado"
-                        name="CelularEncargado"
-                        value={unidad.CelularEncargado}
-                        onClick={() => handleFocus('CelularEncargado')}
-                        onBlur={() => handleBlur('CelularEncargado')}
-                        onChange={handleChange}
-                    />
-                    <FormHelperText>Ingrese el celular del encargado de la unidad</FormHelperText>
+                    <FormHelperText>Seleccione el encargado de la unidad</FormHelperText>
                 </FormControl>
 
                 <FormControl fullWidth margin="normal">

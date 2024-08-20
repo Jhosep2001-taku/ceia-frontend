@@ -1,22 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../axiosConfig';
 import {
     Button,
     TextField,
-    Select,
-    MenuItem,
-    InputLabel,
     FormControl,
     FormHelperText,
     Box,
     Typography,
     Grid,
-    Paper,
     Card,
     CardContent,
-    CardActions,
     CardHeader,
-    Switch
+    Switch,
+    Autocomplete,
+    CircularProgress
 } from '@mui/material';
 import { API_URL } from '../../config';
 
@@ -34,16 +31,22 @@ const AgregarEquipo = ({ onEquipoAgregado }) => {
 
     const [equipo, setEquipo] = useState(initialEquipoState);
     const [unidades, setUnidades] = useState([]);
+    const [filteredUnidades, setFilteredUnidades] = useState([]);
+    const [loading, setLoading] = useState(false);
     const [focusedFields, setFocusedFields] = useState({});
     const [imagenes, setImagenes] = useState([]);
     const [imagenPreview, setImagenPreview] = useState(null);
 
     const fetchUnidades = useCallback(async () => {
+        setLoading(true);
         try {
-            const response = await axios.get(`${API_URL}/unidades`);
+            const response = await axiosInstance.get(`${API_URL}/unidades`);
             setUnidades(response.data);
+            setFilteredUnidades(response.data);
         } catch (error) {
             console.error('Hubo un error al obtener las unidades:', error);
+        } finally {
+            setLoading(false);
         }
     }, []);
 
@@ -59,7 +62,7 @@ const AgregarEquipo = ({ onEquipoAgregado }) => {
         imagenes.forEach(imagen => formData.append('imagenes[]', imagen));
 
         try {
-            const response = await axios.post(`${API_URL}/equipos`, formData, {
+            const response = await axiosInstance.post(`${API_URL}/equipos`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             onEquipoAgregado(response.data);
@@ -102,12 +105,10 @@ const AgregarEquipo = ({ onEquipoAgregado }) => {
 
     const renderTextField = (name, label, multiline = false, rows = 1) => (
         <FormControl fullWidth margin="normal">
-            <InputLabel htmlFor={name} shrink={equipo[name] !== '' || focusedFields[name]}>
-                {label}
-            </InputLabel>
             <TextField
                 id={name}
                 name={name}
+                label={label}
                 value={equipo[name]}
                 onChange={handleInputChange}
                 onFocus={() => handleFocusChange(name, true)}
@@ -115,6 +116,7 @@ const AgregarEquipo = ({ onEquipoAgregado }) => {
                 multiline={multiline}
                 rows={rows}
                 required
+                fullWidth
             />
             <FormHelperText>{`Ingrese ${label.toLowerCase()} del equipo`}</FormHelperText>
         </FormControl>
@@ -130,21 +132,32 @@ const AgregarEquipo = ({ onEquipoAgregado }) => {
                             {renderTextField('Equipo', 'Equipo')}
                             {renderTextField('NIA', 'NIA')}
                             <FormControl fullWidth margin="normal">
-                                <InputLabel htmlFor="IdUnidad">Unidad</InputLabel>
-                                <Select
+                                <Autocomplete
                                     id="IdUnidad"
-                                    name="IdUnidad"
-                                    value={equipo.IdUnidad}
-                                    onChange={handleInputChange}
-                                    required
-                                >
-                                    <MenuItem value="">Seleccione una unidad</MenuItem>
-                                    {unidades.map(unidad => (
-                                        <MenuItem key={unidad.IdUnidad} value={unidad.IdUnidad}>
-                                            {unidad.NombreUnidad}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
+                                    options={unidades}
+                                    getOptionLabel={(option) => option.NombreUnidad || ''}
+                                    value={unidades.find(unidad => unidad.IdUnidad === equipo.IdUnidad) || null}
+                                    onChange={(event, newValue) => {
+                                        setEquipo(prev => ({ ...prev, IdUnidad: newValue ? newValue.IdUnidad : '' }));
+                                    }}
+                                    loading={loading}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Unidad"
+                                            variant="outlined"
+                                            InputProps={{
+                                                ...params.InputProps,
+                                                endAdornment: (
+                                                    <>
+                                                        {loading ? <CircularProgress color="inherit" size={24} /> : null}
+                                                        {params.InputProps.endAdornment}
+                                                    </>
+                                                ),
+                                            }}
+                                        />
+                                    )}
+                                />
                                 <FormHelperText>Seleccione la unidad a la que pertenece el equipo</FormHelperText>
                             </FormControl>
                             {renderTextField('Voltaje', 'Voltaje')}
@@ -153,7 +166,6 @@ const AgregarEquipo = ({ onEquipoAgregado }) => {
                             {renderTextField('Observaciones', 'Observaciones', true, 4)}
 
                             <FormControl fullWidth margin="normal">
-                                <InputLabel htmlFor="Estado" shrink={true}>Estado</InputLabel>
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <Switch
                                         id="Estado"

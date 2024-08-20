@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../axiosConfig';
 import {
     Button,
     Dialog,
@@ -10,56 +10,47 @@ import {
 } from '@mui/material';
 import { API_URL } from '../../config';
 
-const EliminarUsuario = ({ usuarioId, onUsuarioEliminado }) => {
-    const [open, setOpen] = useState(false);
+const EliminarUsuario = ({ open, onClose, usuarioId, onUsuarioEliminado }) => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    const handleClickOpen = () => {
-        setOpen(true);
-    };
-
-    const handleClose = () => {
-        setOpen(false);
-    };
-
-    const handleDelete = () => {
-        axios.delete(`${API_URL}/usuarios/${usuarioId}`)
-            .then(() => {
-                console.log('Usuario eliminado');
-                onUsuarioEliminado(usuarioId); // Notificar al padre que un usuario ha sido eliminado
-                setOpen(false);
-            })
-            .catch(error => {
-                console.error('Hubo un error al eliminar el usuario:', error.response.data);
-            });
+    const handleDelete = async () => {
+        setIsLoading(true); // Start loading state
+        try {
+            await axiosInstance.delete(`${API_URL}/usuarios/${usuarioId}`);
+            console.log('Usuario eliminado');
+            onUsuarioEliminado(usuarioId); // Notificar al padre que un usuario ha sido eliminado
+            onClose(); // Close the dialog
+        } catch (error) {
+            console.error('Hubo un error al eliminar el usuario:', error.response?.data);
+            setError('Hubo un error al eliminar el usuario.'); // Set error message
+        } finally {
+            setIsLoading(false); // End loading state
+        }
     };
 
     return (
-        <div>
-            <Button variant="contained" color="secondary" onClick={handleClickOpen}>
-                Eliminar Usuario
-            </Button>
-            <Dialog
-                open={open}
-                onClose={handleClose}
-                aria-labelledby="alert-dialog-title"
-                aria-describedby="alert-dialog-description"
-            >
-                <DialogTitle id="alert-dialog-title">Confirmación</DialogTitle>
-                <DialogContent>
-                    <DialogContentText id="alert-dialog-description">
-                        ¿Está seguro que desea eliminar este usuario?
+        <Dialog open={open} onClose={onClose}>
+            <DialogTitle>Eliminar Usuario</DialogTitle>
+            <DialogContent>
+                <DialogContentText>
+                    ¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.
+                </DialogContentText>
+                {error && (
+                    <DialogContentText color="error">
+                        {error}
                     </DialogContentText>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleClose} color="primary">
-                        Cancelar
-                    </Button>
-                    <Button onClick={handleDelete} color="secondary" autoFocus>
-                        Eliminar
-                    </Button>
-                </DialogActions>
-            </Dialog>
-        </div>
+                )}
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose} color="primary">
+                    Cancelar
+                </Button>
+                <Button onClick={handleDelete} color="secondary" disabled={isLoading}>
+                    {isLoading ? 'Eliminando...' : 'Eliminar'}
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 };
 

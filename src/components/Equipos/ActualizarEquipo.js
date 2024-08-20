@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../axiosConfig';
 import {
     Typography,
     TextField,
@@ -8,9 +8,11 @@ import {
     FormControl,
     InputLabel,
     Switch,
-    FormHelperText
+    FormHelperText,
+    Select,
+    MenuItem
 } from '@mui/material';
-import ImagenEquipo from '../Imagenes/ImagenEquipo';
+
 import { API_URL } from '../../config';
 
 const ActualizarEquipo = ({ equipoId, onEquipoActualizado }) => {
@@ -24,19 +26,31 @@ const ActualizarEquipo = ({ equipoId, onEquipoActualizado }) => {
         Observaciones: '',
         Estado: 1
     });
+    const [unidades, setUnidades] = useState([]);
 
     useEffect(() => {
         const fetchEquipo = async () => {
             try {
-                const response = await axios.get(`${API_URL}/equipos/${equipoId}`);
+                const response = await axiosInstance.get(`${API_URL}/equipos/${equipoId}`);
                 setEquipo(response.data);
             } catch (error) {
                 console.error('Hubo un error al obtener el equipo:', error);
             }
         };
+
+        const fetchUnidades = async () => {
+            try {
+                const response = await axiosInstance.get(`${API_URL}/unidades`);
+                setUnidades(response.data);
+            } catch (error) {
+                console.error('Hubo un error al obtener las unidades:', error);
+            }
+        };
+
         if (equipoId) {
             fetchEquipo();
         }
+        fetchUnidades();
     }, [equipoId]);
 
     const handleInputChange = (e) => {
@@ -45,16 +59,15 @@ const ActualizarEquipo = ({ equipoId, onEquipoActualizado }) => {
     };
 
     const handleEstadoChange = () => {
-        // Toggle Estado between Activo (1) and Baja (0)
         const newEstado = equipo.Estado === 1 ? 0 : 1;
         setEquipo({ ...equipo, Estado: newEstado });
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        axios.put(`${API_URL}/equipos/${equipoId}`, equipo)
+        axiosInstance.put(`${API_URL}/equipos/${equipoId}`, equipo)
             .then(response => {
-                console.log('Equipo actualizado:', response.data);
+                
                 onEquipoActualizado(response.data);
             })
             .catch(error => {
@@ -88,16 +101,23 @@ const ActualizarEquipo = ({ equipoId, onEquipoActualizado }) => {
                     margin="normal"
                 />
 
-                <TextField
-                    label="ID de Unidad"
-                    type="number"
-                    name="IdUnidad"
-                    value={equipo.IdUnidad}
-                    onChange={handleInputChange}
-                    required
-                    fullWidth
-                    margin="normal"
-                />
+                <FormControl fullWidth margin="normal">
+                    <InputLabel id="IdUnidad-label">Unidad</InputLabel>
+                    <Select
+                        labelId="IdUnidad-label"
+                        name="IdUnidad"
+                        value={equipo.IdUnidad}
+                        onChange={handleInputChange}
+                        required
+                    >
+                        {unidades.map((unidad) => (
+                            <MenuItem key={unidad.IdUnidad} value={unidad.IdUnidad}>
+                                {unidad.NombreUnidad}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                    <FormHelperText>Selecciona la unidad del equipo</FormHelperText>
+                </FormControl>
 
                 <TextField
                     label="Voltaje"
@@ -162,8 +182,7 @@ const ActualizarEquipo = ({ equipoId, onEquipoActualizado }) => {
 
             </form>
 
-            {/* Agregar el componente ImagenEquipo */}
-            {equipoId && <ImagenEquipo equipoId={equipoId} />}
+            
         </Box>
     );
 };

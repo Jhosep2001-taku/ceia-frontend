@@ -1,133 +1,170 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import AgregarUsuario from './AgregarUsuario';
-import ActualizarUsuario from './ActualizarUsuario';
-import EliminarUsuario from './EliminarUsuario';
+import React, { useState } from 'react';
 import {
     Container,
     Typography,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemSecondaryAction,
+    Grid,
+    Card,
+    CardContent,
+    CardActions,
+    IconButton,
     Button,
-    Divider,
     Box,
     CircularProgress,
-    Grid,
-    Paper
+    Paper,
+    Avatar,
+    Chip
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { API_URL } from '../../config';
+import useFetchData from '../../hooks/useFetchData';
+import AgregarUsuario from './AgregarUsuario';
+import ActualizarUsuario from './ActualizarUsuario';
+import EliminarUsuario from './EliminarUsuario';
+import CustomDialog from '../Common/CustomDialog';
+import useDialog from '../../hooks/useDialog';
 
 const Usuarios = () => {
-    const [usuarios, setUsuarios] = useState([]);
+    const { data: usuarios, isLoading, setData: setUsuarios } = useFetchData(`${API_URL}/usuarios`);
     const [selectedUsuarioId, setSelectedUsuarioId] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        fetchUsuarios();
-    }, []);
-
-    const fetchUsuarios = () => {
-        if (!isLoading) {
-            setIsLoading(true);
-            axios.get(`${API_URL}/usuarios`)
-                .then(response => {
-                    setUsuarios(response.data);
-                })
-                .catch(error => {
-                    console.error('Hubo un error al obtener los usuarios:', error);
-                })
-                .finally(() => {
-                    setIsLoading(false);
-                });
-        }
-    };
+    const { isOpen, dialogType, openDialog, closeDialog } = useDialog();
 
     const handleUsuarioAgregado = (nuevoUsuario) => {
-        setUsuarios([...usuarios, nuevoUsuario]);
+        setUsuarios((prevUsuarios) => [...prevUsuarios, nuevoUsuario]);
+        closeDialog();
     };
 
     const handleUsuarioActualizado = (usuarioActualizado) => {
-        setUsuarios(usuarios.map(usuario =>
-            usuario.IdUsuario === usuarioActualizado.IdUsuario ? usuarioActualizado : usuario
-        ));
-        setSelectedUsuarioId(null);
+        setUsuarios((prevUsuarios) =>
+            prevUsuarios.map((usuario) =>
+                usuario.IdUsuario === usuarioActualizado.IdUsuario ? usuarioActualizado : usuario
+            )
+        );
+        closeDialog();
     };
 
     const handleUsuarioEliminado = (usuarioId) => {
-        setUsuarios(usuarios.filter(usuario => usuario.IdUsuario !== usuarioId));
-        setSelectedUsuarioId(null);
+        setUsuarios((prevUsuarios) => prevUsuarios.filter(usuario => usuario.IdUsuario !== usuarioId));
+        closeDialog();
     };
 
-    const selectUsuario = (id) => {
-        setSelectedUsuarioId(id);
+    const handleOpenEditDialog = (usuarioId) => {
+        setSelectedUsuarioId(usuarioId);
+        openDialog('edit');
     };
 
-    return (
-        <Container>
-            <Typography variant="h4" component="h1" gutterBottom>
-                Gestión de Usuarios
-            </Typography>
-            <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                    <Paper elevation={3} sx={{ p: 2 }}>
-                        <AgregarUsuario onUsuarioAgregado={handleUsuarioAgregado} />
-                    </Paper>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                    <Paper elevation={3} sx={{ p: 2 }}>
-                        <Typography variant="h5" component="h2">
-                            Lista de Usuarios
-                        </Typography>
-                        {isLoading ? (
-                            <Box display="flex" justifyContent="center" mt={2}>
-                                <CircularProgress />
-                            </Box>
-                        ) : (
-                            <List>
-                                {usuarios.map(usuario => (
-                                    <Box key={usuario.IdUsuario}>
-                                        <ListItem>
-                                            <ListItemText primary={usuario.NombreCompleto} />
-                                            <ListItemSecondaryAction>
-                                                <Grid container spacing={2}>
-                                                    <Grid item>
-                                                        <Button
-                                                            variant="contained"
-                                                            color="primary"
-                                                            startIcon={<EditIcon />}
-                                                            onClick={() => selectUsuario(usuario.IdUsuario)}
-                                                        >
-                                                            Editar
-                                                        </Button>
-                                                    </Grid>
-                                                    <Grid item>
-                                                        <EliminarUsuario
-                                                            usuarioId={usuario.IdUsuario}
-                                                            onUsuarioEliminado={handleUsuarioEliminado}
-                                                        />
-                                                    </Grid>
-                                                </Grid>
-                                            </ListItemSecondaryAction>
-                                        </ListItem>
-                                        <Divider />
-                                    </Box>
-                                ))}
-                            </List>
-                        )}
-                    </Paper>
-                </Grid>
-            </Grid>
-            {selectedUsuarioId && (
-                <Box mt={4}>
+    const handleOpenDeleteDialog = (usuarioId) => {
+        setSelectedUsuarioId(usuarioId);
+        openDialog('delete');
+    };
+
+    const renderDialogContent = () => {
+        switch (dialogType) {
+            case 'create':
+                return <AgregarUsuario onUsuarioAgregado={handleUsuarioAgregado} />;
+            case 'edit':
+                return selectedUsuarioId && (
                     <ActualizarUsuario
                         usuarioId={selectedUsuarioId}
                         onUsuarioActualizado={handleUsuarioActualizado}
                     />
+                );
+            case 'delete':
+                return (
+                    <EliminarUsuario
+                        open={isOpen}
+                        onClose={closeDialog}
+                        usuarioId={selectedUsuarioId}
+                        onUsuarioEliminado={handleUsuarioEliminado}
+                    />
+                );
+            default:
+                return null;
+        }
+    };
+
+    const getStatusChip = (estado) => {
+        return estado === 1 ? 
+            <Chip label="Activo" color="success" size="medium" /> :
+            <Chip label="Inactivo" color="warning" size="medium" />;
+    };
+
+    return (
+        <Container>
+            <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
+                        Gestión de Usuarios
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => openDialog('create')}
+                        startIcon={<AddIcon />}
+                        sx={{ borderRadius: '20px' }}
+                    >
+                        Agregar Usuario
+                    </Button>
                 </Box>
+            </Paper>
+            <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+            {isLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+                    <CircularProgress />
+                </Box>
+            ) : (
+                <Grid container spacing={3}>
+                    {usuarios.map((usuario) => (
+                        <Grid item xs={12} sm={6} md={4} key={usuario.IdUsuario}>
+                            <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <Avatar sx={{ width: 56, height: 56, margin: 2 }} alt={usuario.NombreCompleto} src={usuario.AvatarUrl} />
+                                    {getStatusChip(usuario.Estado)}
+                                <CardContent sx={{ flex: '1 0 auto', textAlign: 'center' }}>
+                                    <Typography variant="h6">{usuario.NombreCompleto}</Typography>
+                                    <Typography color="textSecondary">{usuario.Documento}</Typography>
+                                    <Typography color="textSecondary">{usuario.Correo}</Typography>
+                                    <Typography color="textSecondary">{usuario.Celular}</Typography>
+                                    <Typography color="textSecondary">{usuario.Rol}</Typography>
+                                    
+                                </CardContent>
+                                <CardActions>
+                                    <IconButton
+                                        color="primary"
+                                        onClick={() => handleOpenEditDialog(usuario.IdUsuario)}
+                                    >
+                                        <EditIcon />
+                                    </IconButton>
+                                    <Button
+                                        variant="outlined"
+                                        color="secondary"
+                                        onClick={() => handleOpenDeleteDialog(usuario.IdUsuario)}
+                                        startIcon={<DeleteIcon />}
+                                    >
+                                        Eliminar
+                                    </Button>
+                                </CardActions>
+                            </Card>
+                        </Grid>
+                    ))}
+                </Grid>
             )}
+            </Paper>
+
+            {/* Modal */}
+            <CustomDialog
+                open={isOpen}
+                onClose={closeDialog}
+                title={
+                    dialogType === 'create' ? 'Agregar Usuario' :
+                    dialogType === 'edit' ? 'Editar Usuario' :
+                    dialogType === 'delete' ? 'Eliminar Usuario' :
+                    ''
+                }
+                onSubmit={dialogType === 'delete' ? () => handleUsuarioEliminado(selectedUsuarioId) : undefined}
+            >
+                {renderDialogContent()}
+            </CustomDialog>
         </Container>
     );
 };

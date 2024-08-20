@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../axiosConfig';
 import {
     Typography,
     TextField,
@@ -17,10 +17,19 @@ const ActualizarPermiso = ({ id, onUpdate, onCancel }) => {
     const [usuarios, setUsuarios] = useState([]);
     const [focused, setFocused] = useState(false); // Agregamos un nuevo estado para el foco
 
+    const tiposPermiso = [
+        'Administrador del Sistema',
+        'Gerente',
+        'Ingeniero',
+        'Técnico',
+        'Encargado de Unidad',
+        'Usuario Básico'
+    ];
+
     useEffect(() => {
         const fetchUsuarios = async () => {
             try {
-                const response = await axios.get(`${API_URL}/usuarios`);
+                const response = await axiosInstance.get(`${API_URL}/usuarios`);
                 setUsuarios(response.data);
             } catch (error) {
                 console.error('Error al obtener la lista de usuarios:', error);
@@ -29,7 +38,7 @@ const ActualizarPermiso = ({ id, onUpdate, onCancel }) => {
 
         const fetchPermiso = async () => {
             try {
-                const response = await axios.get(`${API_URL}/permisos/${id}`);
+                const response = await axiosInstance.get(`${API_URL}/permisos/${id}`);
                 const { IdUsuario, TipoPermiso } = response.data;
                 setFormData({ IdUsuario, TipoPermiso });
             } catch (error) {
@@ -51,7 +60,7 @@ const ActualizarPermiso = ({ id, onUpdate, onCancel }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        axios.put(`${API_URL}/permisos/${id}`, formData)
+        axiosInstance.put(`${API_URL}/permisos/${id}`, formData)
             .then(response => {
                 onUpdate(response.data); // Actualizar el estado de permisos en el componente padre
             })
@@ -73,7 +82,7 @@ const ActualizarPermiso = ({ id, onUpdate, onCancel }) => {
             <Typography variant="h5" gutterBottom>Actualizar Permiso</Typography>
             <form onSubmit={handleSubmit}>
                 <FormControl fullWidth margin="normal">
-                    <InputLabel htmlFor="IdUsuario">ID Usuario</InputLabel>
+                    <InputLabel htmlFor="IdUsuario">Seleccione un Usuario</InputLabel>
                     <Select
                         id="IdUsuario"
                         name="IdUsuario"
@@ -88,33 +97,22 @@ const ActualizarPermiso = ({ id, onUpdate, onCancel }) => {
                     </Select>
                 </FormControl>
                 <FormControl fullWidth margin="normal">
-                    <TextField
+                    <InputLabel htmlFor="TipoPermiso">Tipo de Permiso</InputLabel>
+                    <Select
                         id="TipoPermiso"
                         name="TipoPermiso"
                         value={formData.TipoPermiso}
                         onChange={handleChange}
                         required
-                        fullWidth
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-                        InputProps={{
-                            startAdornment: (
-                                <InputLabel
-                                    position="start"
-                                    htmlFor="TipoPermiso"
-                                    shrink={formData.TipoPermiso !== '' || focused}
-                                >
-                                    Tipo de Permiso
-                                </InputLabel>
-                            ),
-                        }}
-                    />
+                    >
+                        <MenuItem value="">Selecciona un tipo de permiso</MenuItem>
+                        {tiposPermiso.map((tipo, index) => (
+                            <MenuItem key={index} value={tipo}>{tipo}</MenuItem>
+                        ))}
+                    </Select>
                 </FormControl>
                 <Button type="submit" variant="contained" color="primary" sx={{ mr: 2 }}>
                     Actualizar Permiso
-                </Button>
-                <Button type="button" onClick={onCancel} variant="outlined" color="secondary">
-                    Cancelar
                 </Button>
             </form>
         </Box>
